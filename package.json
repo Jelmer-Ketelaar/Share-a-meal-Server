@@ -1,29 +1,36 @@
 {
-  "name": "myapp",
-  "version": "0.0.0",
-  "private": true,
+  "name": "les-1",
+  "version": "1.0.0",
+  "description": "express server",
+  "main": "index.js",
   "scripts": {
-    "start": "node ./bin/www",
-    "dev": "nodemon index.js"
+    "dev": "nodemon index.js",
+    "test": "mocha test/**/*.test.js --exit"
   },
-  "dependencies": {
-    "cookie-parser": "~1.4.4",
-    "debug": "~2.6.9",
-    "express": "^4.18.2",
-    "http-errors": "~1.6.3",
-    "jade": "^0.29.0",
-    "morgan": "~1.9.1",
-    "nodemon": "^2.0.22"
-  },
-  "devDependencies": {
-    "nodemon": "^2.0.22"
-  },
-  "main": "app.js",
   "keywords": [
     "javascript",
-    "nodejs"
+    "nodejs",
+    "express"
   ],
-  "author": "jelmer",
+  "author": "david",
   "license": "ISC",
-  "description": "Share a meal server"
+  "dependencies": {
+    "dotenv": "^16.0.3",
+    "express": "^4.18.2",
+    "tracer": "^1.1.6"
+  },
+  "devDependencies": {
+    "chai": "^4.3.7",
+    "chai-http": "^4.3.0",
+    "mocha": "^10.2.0",
+    "nodemon": "^2.0.22",
+    "nyc": "^15.1.0",
+    "prettier": "^2.8.7"
+  },
+  "prettier": {
+    "trailingComma": "none",
+    "tabWidth": 2,
+    "semi": true,
+    "singleQuote": true
+  }
 }
