@@ -1,6 +1,5 @@
-// Onze lokale 'in memory database'. Later gaan we deze naar een
-// aparte module (= apart bestand) verplaatsen.
-let database = {
+// Onze lokale 'in memory inmemDb'. Later gaan we deze naar een aparte module (= apart bestand) verplaatsen.
+let inmemDb = {
   users: [
     {
       id: 0,
@@ -23,4 +22,4 @@ let database = {
   index: 2
 };
 
-module.exports = database;
+module.exports = inmemDb;

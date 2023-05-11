@@ -1,44 +1,47 @@
+process.env.DB_DATABASE = process.env.DB_DATABASE || 'shareameal-testdb';
+
+const assert = require('assert');
 const chai = require('chai');
 const chaiHttp = require('chai-http');
 const server = require('../../index');
 require('tracer').setLevel('error');
 
-const expect = chai.expect;
-
+chai.should();
 chai.use(chaiHttp);
 
 describe('UC-102 Informatie opvragen', function() {
-  describe('GET /api/info', function() {
-    it('should return successful information', (done) => {
-      chai
-        .request(server)
-        .get('/api/info')
-        .end((err, res) => {
-          expect(err).to.be.null;
-          expect(res).to.have.status(201);
-          expect(res.body).to.be.an('object');
-          expect(res.body).to.have.property('message');
-          expect(res.body).to.have.property('data').that.is.an('object');
-          expect(res.body.data).to.have.property('studentName').that.is.equal('Davide');
-          expect(res.body.data).to.have.property('studentNumber').that.is.equal(1234567);
-          done();
-        });
-    });
+  it('TC-102-1 - Server info should return successful information', (done) => {
+    chai
+      .request(server)
+      .get('/api/info')
+      .end((err, res) => {
+        res.body.should.be.an('object');
+        chai.expect(res.body).to.have.property('status').to.be.equal(201);
+        chai.expect(res.body).to.have.property('message');
+        chai.expect(res.body).to.have.property('data');
+        let { data, message } = res.body;
+        chai.expect(data).to.be.an('object');
+        chai.expect(data).to.have.property('studentName').to.be.equal('Davide');
+        chai.expect(data).to.have.property('studentNumber').to.be.equal(1234567);
+        done();
+      });
   });
 
-  describe('Invalid endpoint', function() {
-    it('should return 404 error when endpoint does not exist', (done) => {
-      chai
-        .request(server)
-        .get('/api/doesnotexist')
-        .end((err, res) => {
-          expect(err).to.be.null;
-          expect(res).to.have.status(404);
-          expect(res.body).to.be.an('object');
-          expect(res.body).to.have.property('message').that.is.a('string').that.is.equal('Endpoint not found');
-          expect(res.body).to.have.property('data').that.is.an('object');
-          done();
-        });
-    });
+  it('TC-102-2 - Server should return valid error when endpoint does not exist', (done) => {
+    chai
+      .request(server)
+      .get('/api/doesnotexist')
+      .end((err, res) => {
+        assert.strictEqual(err, null);
+
+        res.body.should.be.an('object');
+        let { data, message, status } = res.body;
+
+        chai.expect(status).to.equal(404);
+        chai.expect(message).to.be.a('string').that.is.equal('Endpoint not found');
+        chai.expect(data).to.be.an('object');
+
+        done();
+      });
   });
 });

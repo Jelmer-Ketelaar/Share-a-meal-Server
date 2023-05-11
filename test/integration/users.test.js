@@ -1,106 +1,235 @@
-const assert = require('assert');
+process.env.DB_DATABASE = process.env.DB_DATABASE || 'shareameal-testdb';
+
 const chai = require('chai');
 const chaiHttp = require('chai-http');
 const server = require('../../index');
-require('tracer').setLevel('error');
+const assert = require('assert');
+const dbconnection = require('../../src/util/mysql-db');
+const jwt = require('jsonwebtoken');
+const { jwtSecretKey, logger } = require('../../src/util/utils');
+require('tracer').setLevel('trace');
 
 chai.should();
 chai.use(chaiHttp);
 
-describe('UC-201 Registreren als nieuwe user', () => {
-  it('TC-201-1 - Verplicht veld ontbreekt', (done) => {
-    /*Testen die te maken hebben met authenticatie of het valideren van
-    verplichte velden kun je nog niet uitvoeren. Voor het eerste inlevermoment
-    mag je die overslaan.
-    In een volgende huiswerk opdracht ga je deze tests wel uitwerken.*/
-    // Voor nu:
+// Clear and fill the test database before each test
+const CLEAR_MEAL_TABLE = 'DELETE IGNORE FROM `meal`;';
+const CLEAR_PARTICIPANTS_TABLE = 'DELETE IGNORE FROM `meal_participants_user`;';
+const CLEAR_USERS_TABLE = 'DELETE IGNORE FROM `user`;';
+const CLEAR_DB = CLEAR_MEAL_TABLE + CLEAR_PARTICIPANTS_TABLE + CLEAR_USERS_TABLE;
+
+// Add a user to the database
+const INSERT_USER =
+  'INSERT INTO `user` (`id`, `firstName`, `lastName`, `emailAdress`, `password`, `street`, `city` ) VALUES' +
+  '(1, "first", "last", "name@server.nl", "secret", "street", "city");';
+
+// Add two meals to the database
+const INSERT_MEALS =
+  'INSERT INTO `meal` (`id`, `name`, `description`, `imageUrl`, `dateTime`, `maxAmountOfParticipants`, `price`, `cookId`) VALUES' +
+  '(1, \'Meal A\', \'description\', \'image url\', NOW(), 5, 6.50, 1),' +
+  '(2, \'Meal B\', \'description\', \'image url\', NOW(), 5, 6.50, 1);';
+
+describe('Users API', () => {
+  before((done) => {
+    // Perform setup tasks before running the tests
+    logger.trace('before: perform preconditions setup here');
+    logger.trace('before done');
     done();
   });
 
-  it('TC-201-5 - User succesvol geregistreerd', (done) => {
-    // nieuwe user waarmee we testen
-    const newUser = {
-      firstName: 'Hendrik',
-      lastName: 'van Dam',
-      emailAdress: 'hvd@server.nl'
-    };
-
-    // Voer de test uit
-    chai
-      .request(server)
-      .post('/api/register')
-      .send(newUser)
-      .end((err, res) => {
-        // Valideer dat er geen errors waren. Kan met assert()
-        assert(err === null);
-        // of met chai.expect(), is meer BDD.
-        chai.expect(err).to.be.null;
-
-        res.body.should.be.an('object');
-        let { data, message, status } = res.body;
-
-        status.should.equal(200);
-        message.should.be.a('string').that.contains('toegevoegd');
-        data.should.be.an('object');
-
-        // OPDRACHT!
-        // Bekijk zelf de API reference op https://www.chaijs.com/api/bdd/
-        // Daar zie je welke chained functions je nog meer kunt gebruiken.
-        data.should.include({ id: 2 });
-        data.should.not.include({ id: 0 });
-        data.id.should.equal(2);
-        data.firstName.should.equal('Hendrik');
-
-        done();
+  describe('UC-xyz [use case description]', () => {
+    beforeEach((done) => {
+      // Clear the test database and add a user before each test
+      logger.trace('beforeEach called');
+      dbconnection.getConnection(function(err, connection) {
+        if (err) {
+          done(err);
+          throw err; // no connection
+        }
+        connection.query(CLEAR_DB + INSERT_USER, function(error, results, fields) {
+          if (error) {
+            done(error);
+            throw error; // not connected!
+          }
+          logger.trace('beforeEach done');
+          dbconnection.releaseConnection(connection);
+          done();
+        });
       });
+    });
+
+    it.skip('TC-201-1 Voorbeeld testcase, met POST, wordt nu geskipped', (done) => {
+      chai
+        .request(server)
+        .post('/api/movie')
+        .send({
+          // name is missing
+          year: 1234,
+          studio: 'pixar'
+        })
+        .end((err, res) => {
+          assert.ifError(err);
+          res.should.have.status(401);
+          res.should.be.an('object');
+
+          res.body.should.be.an('object').that.has.all.keys('code', 'message');
+          code.should.be.an('number');
+          message.should.be.a('string').that.contains('error');
+          done();
+        });
+    });
+
+    it('TC-201-2 Als gebruiker wil ik mezelf kunnen registreren in het systeem', (done) => {
+      // Basisscenario
+      chai
+        .request(server)
+        .post('/api/user/register')
+        .send({
+          // Provide the necessary user registration data
+          email: 'test@example.com',
+          password: 'test123',
+          firstName: 'John',
+          lastName: 'Doe'
+        })
+        .end((err, res) => {
+          assert.ifError(err);
+          res.should.have.status(200);
+          res.should.be.an('object');
+
+          res.body.should.be.an('object').that.has.all.keys('code', 'message', 'data');
+          let { code, message, data } = res.body;
+          code.should.be.a('number');
+          message.should.be.a('string').that.contains('User registration');
+          data.should.be.an('object');
+          // Add additional validations as needed
+          done();
+        });
+    });
+
+// En hier komen meer testcases
   });
-});
 
-describe('UC-202 Opvragen van overzicht van users', () => {
-  it('TC-202-1 - Toon alle gebruikers, minimaal 2', (done) => {
-    // Voer de test uit
-    chai
-      .request(server)
-      .get('/api/user')
-      .end((err, res) => {
-        assert(err === null);
-
-        res.body.should.be.an('object');
-        let { data, message, status } = res.body;
-
-        status.should.equal(200);
-        message.should.be.a('string').equal('User getAll endpoint');
-
-        // Je kunt hier nog testen dat er werkelijk 2 userobjecten in het array zitten.
-        // Maarrr: omdat we in een eerder test een user hebben toegevoegd, bevat
-        // de database nu 3 users...
-        // We komen hier nog op terug.
-        data.should.be.an('array').that.has.length(3);
-
-        done();
+  describe('UC-203 Opvragen van gebruikersprofiel', () => {
+    beforeEach((done) => {
+      logger.trace('beforeEach called');
+      // Clear the test database before running the tests
+      dbconnection.getConnection(function(err, connection) {
+        if (err) {
+          done(err);
+          throw err;
+        }
+        connection.query(CLEAR_DB + INSERT_USER, function(error, results, fields) {
+          if (error) {
+            done(error);
+            throw error;
+          }
+          logger.trace('beforeEach done');
+          dbconnection.releaseConnection(connection);
+          done();
+        });
       });
-  });
+    });
 
-  // Je kunt een test ook tijdelijk skippen om je te focussen op andere testcases.
-  // Dan gebruik je it.skip
-  it.skip('TC-202-2 - Toon gebruikers met zoekterm op niet-bestaande velden', (done) => {
-    // Voer de test uit
-    chai
-      .request(server)
-      .get('/api/user')
-      .query({ name: 'foo', city: 'non-existent' })
-      // Is gelijk aan .get('/api/user?name=foo&city=non-existent')
-      .end((err, res) => {
-        assert(err === null);
+    it.skip('TC-203-1 Invalid token', (done) => {
+      chai
+        .request(server)
+        .get('/api/user/profile')
+        .set('authorization', 'Bearer hier-staat-een-ongeldig-token')
+        .end((err, res) => {
+          assert.ifError(err);
+          res.should.have.status(401);
+          res.should.be.an('object');
 
-        res.body.should.be.an('object');
-        let { data, message, status } = res.body;
+          res.body.should.be
+            .an('object')
+            .that.has.all.keys('code', 'message', 'data');
+          let { code, message, data } = res.body;
+          code.should.be.an('number');
+          message.should.be.a('string').equal('Not authorized');
+          done();
+        });
+    });
 
-        status.should.equal(200);
-        message.should.be.a('string').equal('User getAll endpoint');
-        data.should.be.an('array');
+    it('TC-203-2 User logged in with valid token', (done) => {
+      chai
+        .request(server)
+        .get('/api/user/profile')
+        .set('authorization', 'Bearer ' + jwt.sign({ userId: 1 }, jwtSecretKey))
+        .end((err, res) => {
+          assert.ifError(err);
+          res.should.have.status(200);
+          res.should.be.an('object');
 
-        done();
+          res.body.should.be
+            .an('object')
+            .that.has.all.keys('code', 'message', 'data');
+          let { code, message, data } = res.body;
+          code.should.be.an('number');
+          message.should.be.a('string').that.contains('Get User profile');
+          data.should.be.an('object');
+          data.id.should.equal(1);
+          data.firstName.should.equal('first');
+          // Additional validations
+          data.lastName.should.equal('last');
+          data.emailAddress.should.equal('name@server.nl');
+          data.street.should.equal('street');
+          data.city.should.equal('city');
+          done();
+        });
+    });
+
+
+    describe('UC-303 Lijst van maaltijden opvragen', () => {
+      //
+      beforeEach((done) => {
+        logger.debug('beforeEach called');
+        dbconnection.getConnection(function(err, connection) {
+          if (err) {
+            done(err);
+            throw err; // not connected!
+          }
+          connection.query(
+            CLEAR_DB + INSERT_USER + INSERT_MEALS,
+            function(error, results, fields) {
+              // When done with the connection, release it.
+              dbconnection.releaseConnection(connection);
+              // Handle error after the release.
+              if (err) {
+                done(err);
+                throw err;
+              }
+              // Let op dat je done() pas aanroept als de query callback eindigt!
+              logger.debug('beforeEach done');
+              done();
+            }
+          );
+        });
       });
+
+      it.skip('TC-303-1 Lijst van maaltijden wordt succesvol geretourneerd', (done) => {
+        chai
+          .request(server)
+          .get('/api/meal')
+          // wanneer je authenticatie gebruikt kun je hier een token meesturen
+          // .set('authorization', 'Bearer ' + jwt.sign({ id: 1 }, jwtSecretKey))
+          .end((err, res) => {
+            assert.ifError(err);
+
+            res.should.have.status(200);
+            res.should.be.an('object');
+
+            res.body.should.be
+              .an('object')
+              .that.has.all.keys('message', 'data', 'code');
+
+            const { code, data } = res.body;
+            code.should.be.an('number');
+            data.should.be.an('array').that.has.length(2);
+            data[0].name.should.equal('Meal A');
+            data[0].id.should.equal(1);
+            done();
+          });
+      });
+    });
   });
 });
