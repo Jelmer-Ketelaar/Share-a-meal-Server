@@ -15,7 +15,7 @@ const userController = {
       // bv sqlStatement += " WHERE `isActive=?`"
     }
 
-    pool.getConnection(function (err, conn) {
+    pool.getConnection(function(err, conn) {
       // Do something with the connection
       if (err) {
         logger.error(err.code, err.syscall, err.address, err.port);
@@ -25,7 +25,7 @@ const userController = {
         });
       }
       if (conn) {
-        conn.query(sqlStatement, function (err, results, fields) {
+        conn.query(sqlStatement, function(err, results, fields) {
           if (err) {
             logger.err(err.message);
             next({
@@ -53,7 +53,7 @@ const userController = {
 
     let sqlStatement = 'SELECT * FROM `user` WHERE id=?';
 
-    pool.getConnection(function (err, conn) {
+    pool.getConnection(function(err, conn) {
       // Do something with the connection
       if (err) {
         logger.error(err.code, err.syscall, err.address, err.port);
@@ -119,8 +119,133 @@ const userController = {
      * Voor tips, zie de PDF van de les over authenticatie.
      */
   },
+  getUserById: (req, res, next) => {
+    const userId = req.params.id;
+    logger.trace('Get user by ID:', userId);
 
-  deleteUser: (req, res) => {}
+    let sqlStatement = 'SELECT * FROM `user` WHERE id=?';
+
+    pool.getConnection(function(err, conn) {
+      // Do something with the connection
+      if (err) {
+        logger.error(err.code, err.syscall, err.address, err.port);
+        next({
+          code: 500,
+          message: err.code
+        });
+      }
+      if (conn) {
+        conn.query(sqlStatement, [userId], (err, results, fields) => {
+          if (err) {
+            logger.error(err.message);
+            next({
+              code: 409,
+              message: err.message
+            });
+          }
+          if (results && results.length > 0) {
+            logger.trace('Found user:', results[0]);
+            res.status(200).json({
+              code: 200,
+              message: 'Get user by ID',
+              data: results[0]
+            });
+          } else {
+            next({
+              code: 404,
+              message: 'User not found'
+            });
+          }
+        });
+        pool.releaseConnection(conn);
+      }
+    });
+  },
+
+  updateUser: (req, res, next) => {
+    const userId = req.params.id;
+    const userData = req.body;
+    logger.trace('Update user:', userId);
+
+    let sqlStatement = 'UPDATE `user` SET ? WHERE id=?';
+
+    pool.getConnection(function(err, conn) {
+      // Do something with the connection
+      if (err) {
+        logger.error(err.code, err.syscall, err.address, err.port);
+        next({
+          code: 500,
+          message: err.code
+        });
+      }
+      if (conn) {
+        conn.query(sqlStatement, [userData, userId], (err, results, fields) => {
+          if (err) {
+            logger.error(err.message);
+            next({
+              code: 409,
+              message: err.message
+            });
+          } else if (results.affectedRows > 0) {
+            logger.trace('User updated:', results);
+            res.status(200).json({
+              code: 200,
+              message: 'User updated successfully',
+              data: results
+            });
+          } else {
+            next({
+              code: 404,
+              message: 'User not found'
+            });
+          }
+        });
+        pool.releaseConnection(conn);
+      }
+    });
+  },
+
+  deleteUser: (req, res, next) => {
+    const userId = req.params.id;
+    logger.trace('Delete user:', userId);
+
+    let sqlStatement = 'DELETE FROM `user` WHERE id=?';
+
+    pool.getConnection(function(err, conn) {
+      // Do something with the connection
+      if (err) {
+        logger.error(err.code, err.syscall, err.address, err.port);
+        next({
+          code: 500,
+          message: err.code
+        });
+      }
+      if (conn) {
+        conn.query(sqlStatement, [userId], (err, results, fields) => {
+          if (err) {
+            logger.error(err.message);
+            next({
+              code: 409,
+              message: err.message
+            });
+          } else if (results.affectedRows > 0) {
+            logger.trace('User deleted:', results);
+            res.status(200).json({
+              code: 200,
+              message: 'User deletedsuccessfully',
+              data: results
+            });
+          } else {
+            next({
+              code: 404,
+              message: 'User not found'
+            });
+          }
+        });
+        pool.releaseConnection(conn);
+      }
+    });
+  }
 };
 
 module.exports = userController;
